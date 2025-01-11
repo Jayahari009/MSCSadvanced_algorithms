@@ -1,0 +1,47 @@
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+
+// Function to find the indices of the two numbers that add up to the target
+std::vector<int> twoSum(const std::vector<int>& nums, int target) {
+    // Create a hash map to store the difference and its index
+    std::unordered_map<int, int> hashMap;
+
+    // Iterate through the array
+    for (int i = 0; i < nums.size(); ++i) {
+        int complement = target - nums[i];
+
+        // Check if the complement is already in the hash map
+        if (hashMap.find(complement) != hashMap.end()) {
+            return {hashMap[complement], i};
+        }
+
+        // Add the current number and its index to the hash map
+        hashMap[nums[i]] = i;
+    }
+
+    // Return an empty vector if no solution is found (should not happen per problem constraints)
+    return {};
+}
+
+int main() {
+    // Example 1
+    std::vector<int> nums1 = {2, 7, 11, 15};
+    int target1 = 9;
+    std::vector<int> result1 = twoSum(nums1, target1);
+    std::cout << "Example 1 Output: [" << result1[0] << ", " << result1[1] << "]\n";
+
+    // Example 2
+    std::vector<int> nums2 = {3, 2, 4};
+    int target2 = 6;
+    std::vector<int> result2 = twoSum(nums2, target2);
+    std::cout << "Example 2 Output: [" << result2[0] << ", " << result2[1] << "]\n";
+
+    // Example 3
+    std::vector<int> nums3 = {3, 3};
+    int target3 = 6;
+    std::vector<int> result3 = twoSum(nums3, target3);
+    std::cout << "Example 3 Output: [" << result3[0] << ", " << result3[1] << "]\n";
+
+    return 0;
+}
