@@ -1,0 +1,102 @@
+#include <iostream>
+#include <queue>
+#include <unordered_map>
+#include <vector>
+#include <iomanip> // For formatting output
+
+using namespace std;
+
+// A Tree node
+struct Node {
+    char ch;
+    int freq;
+    Node *left, *right;
+
+    Node(char character, int frequency) {
+        ch = character;
+        freq = frequency;
+        left = right = nullptr;
+    }
+};
+
+// Comparison object for the priority queue
+struct compare {
+    bool operator()(Node* left, Node* right) {
+        return left->freq > right->freq;
+    }
+};
+
+// Function to generate Huffman codes
+void generateCodes(Node* root, string code, unordered_map<char, string>& huffmanCode) {
+    if (!root) return;
+
+    // Leaf node
+    if (!root->left && !root->right) {
+        huffmanCode[root->ch] = code;
+    }
+
+    generateCodes(root->left, code + "0", huffmanCode);
+    generateCodes(root->right, code + "1", huffmanCode);
+}
+
+// Function to print Huffman codes with clear formatting
+void printHuffmanCodes(unordered_map<char, string>& huffmanCode) {
+    cout << "\nCharacter | Huffman Code\n";
+    cout << "------------------------\n";
+    for (auto& pair : huffmanCode) {
+        cout << "    " << pair.first << "     | " << pair.second << endl;
+    }
+}
+
+// Function to free allocated memory
+void freeTree(Node* root) {
+    if (!root) return;
+    freeTree(root->left);
+    freeTree(root->right);
+    delete root;
+}
+
+// Builds the Huffman tree and prints codes
+void buildHuffmanTree(string S, vector<int> freq) {
+    priority_queue<Node*, vector<Node*>, compare> pq;
+
+    // Create leaf nodes for each character and add to the priority queue.
+    for (size_t i = 0; i < S.length(); ++i) {
+        pq.push(new Node(S[i], freq[i]));
+    }
+
+    // Construct the Huffman Tree
+    while (pq.size() != 1) {
+        Node *left = pq.top(); pq.pop();
+        Node *right = pq.top(); pq.pop();
+
+        // Create a new internal node with a frequency sum of the two nodes.
+        Node *node = new Node('$', left->freq + right->freq);
+        node->left = left;
+        node->right = right;
+
+        pq.push(node);
+    }
+
+    // Get the root node of the Huffman Tree
+    Node* root = pq.top();
+
+    // Generate Huffman codes
+    unordered_map<char, string> huffmanCode;
+    generateCodes(root, "", huffmanCode);
+
+    // Print Huffman codes with formatting
+    printHuffmanCodes(huffmanCode);
+
+    // Free allocated memory
+    freeTree(root);
+}
+
+int main() {
+    string S = "abcdef";
+    vector<int> freq = {5, 9, 12, 13, 16, 45};
+
+    buildHuffmanTree(S, freq);
+
+    return 0;
+}
