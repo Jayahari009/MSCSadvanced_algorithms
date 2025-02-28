@@ -1,0 +1,164 @@
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <bitset>
+
+using namespace std;
+
+// Constants used in SHA-256
+const uint32_t K[64] = {
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0x9a9c4c7f, 0xa2e6b70f, 0x18b1f5f5, 0x71d64c93, 0x76f988da, 0x19a4c116, 0x7e8d9f7b, 0x7f7f63d2,
+    0xf0b6e8c5, 0x2a34cde9, 0x96be2f00, 0xe0fc31d0, 0x87b08956, 0x39530fb6, 0x462136b5, 0x0d25e22b,
+    0xc7b2b105, 0x68eb56a9, 0x15db8f5c, 0x3f39a84c, 0x43147dbf, 0x50f68e31, 0x60c3c8b5, 0x2687da51,
+    0x339eab5d, 0x1f95e7fe, 0x9f199a01, 0xd8044891, 0xb69e0131, 0x59f07e8e, 0x3e6072c0, 0x612e7c46,
+    0x67d15b00, 0xc0235bcf, 0xe2c37b1d, 0x93dd12b9, 0xc0e38f89, 0x16f4b719, 0xc0d74a64, 0x3e84b479
+};
+
+// Rotates a 32-bit word right by n bits
+uint32_t rotr(uint32_t word, uint32_t n) {
+    return (word >> n) | (word << (32 - n));
+}
+
+// Ch function used in SHA-256
+uint32_t ch(uint32_t x, uint32_t y, uint32_t z) {
+    return (x & y) ^ (~x & z);
+}
+
+// Maj function used in SHA-256
+uint32_t maj(uint32_t x, uint32_t y, uint32_t z) {
+    return (x & y) ^ (x & z) ^ (y & z);
+}
+
+// Sigma0 and Sigma1 functions used in SHA-256
+uint32_t sigma0(uint32_t x) {
+    return rotr(x, 7) ^ rotr(x, 18) ^ (x >> 3);
+}
+
+uint32_t sigma1(uint32_t x) {
+    return rotr(x, 17) ^ rotr(x, 19) ^ (x >> 10);
+}
+
+// Sum0 and Sum1 functions used in SHA-256
+uint32_t sum0(uint32_t x) {
+    return rotr(x, 2) ^ rotr(x, 13) ^ rotr(x, 22);
+}
+
+uint32_t sum1(uint32_t x) {
+    return rotr(x, 6) ^ rotr(x, 11) ^ rotr(x, 25);
+}
+
+// Padding for the message
+void pad_message(string& message) {
+    size_t original_len = message.size();
+    message += (char)0x80; // Append a single '1' bit
+
+    while (message.size() % 64 != 56) {
+        message += (char)0x00; // Pad with '0' bits
+    }
+
+    // Append length of message in bits
+    uint64_t length = original_len * 8;
+    message += string(8, '\0'); // Append placeholder for 8 bytes
+    for (int i = 7; i >= 0; --i) {
+        message[message.size() - 8 + i] = (char)((length >> (i * 8)) & 0xff);
+    }
+}
+
+// SHA-256 hash function
+string sha256(string message) {
+    pad_message(message);
+
+    // Initialize hash values (first 32 bits of the fractional parts of the square roots of the first 8 primes)
+    uint32_t h0 = 0x6a09e667;
+    uint32_t h1 = 0xbb67ae85;
+    uint32_t h2 = 0x3c6ef372;
+    uint32_t h3 = 0xa54ff53a;
+    uint32_t h4 = 0x510e527f;
+    uint32_t h5 = 0x9b05688c;
+    uint32_t h6 = 0x1f83d9ab;
+    uint32_t h7 = 0x5be0cd19;
+
+    // Process message in 512-bit (64-byte) blocks
+    for (size_t i = 0; i < message.size(); i += 64) {
+        uint32_t w[64] = {0};
+
+        // Break message into 512-bit chunks
+        for (int t = 0; t < 16; ++t) {
+            w[t] = (message[i + t * 4] << 24) | (message[i + t * 4 + 1] << 16) |
+                   (message[i + t * 4 + 2] << 8) | (message[i + t * 4 + 3]);
+        }
+
+        // Extend the first 16 words into the remaining 48 words
+        for (int t = 16; t < 64; ++t) {
+            w[t] = sigma1(w[t - 2]) + w[t - 7] + sigma0(w[t - 15]) + w[t - 16];
+        }
+
+        // Initialize working variables
+        uint32_t a = h0;
+        uint32_t b = h1;
+        uint32_t c = h2;
+        uint32_t d = h3;
+        uint32_t e = h4;
+        uint32_t f = h5;
+        uint32_t g = h6;
+        uint32_t h = h7;
+
+        // Main loop
+        for (int t = 0; t < 64; ++t) {
+            uint32_t temp1 = h + sum1(e) + ch(e, f, g) + K[t] + w[t];
+            uint32_t temp2 = sum0(a) + maj(a, b, c);
+            h = g;
+            g = f;
+            f = e;
+            e = d + temp1;
+            d = c;
+            c = b;
+            b = a;
+            a = temp1 + temp2;
+        }
+
+        // Add the compressed chunk to the current hash value
+        h0 += a;
+        h1 += b;
+        h2 += c;
+        h3 += d;
+        h4 += e;
+        h5 += f;
+        h6 += g;
+        h7 += h;
+    }
+
+    // Produce the final hash value (the message digest)
+    stringstream ss;
+    ss << hex << setw(8) << setfill('0') << h0
+       << setw(8) << setfill('0') << h1
+       << setw(8) << setfill('0') << h2
+       << setw(8) << setfill('0') << h3
+       << setw(8) << setfill('0') << h4
+       << setw(8) << setfill('0') << h5
+       << setw(8) << setfill('0') << h6
+       << setw(8) << setfill('0') << h7;
+
+    return ss.str();
+}
+
+int main() {
+    // Read the Book of Mark from the provided URL
+    ifstream file("book_of_mark.txt"); // Load the book of Mark into the text file
+    stringstream buffer;
+    buffer << file.rdbuf();
+    string text = buffer.str();
+
+    // Compute the hash
+    string hash = sha256(text);
+
+    // Output the hash
+    cout << "SHA-256 Hash: " << hash << endl;
+
+    return 0;
+}
